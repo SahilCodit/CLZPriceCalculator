@@ -1,0 +1,746 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure Hub-Spoke Landing Zone Cost Estimator — West Europe</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+:root{
+  --azure:#0078d4;--azure-dark:#005a9e;--azure-light:#e6f2fb;
+  --bg:#f8fafc;--card:#fff;--border:#dde3ea;
+  --text:#1a2332;--muted:#637081;
+  --green:#107c10;--green-bg:#dff6dd;
+  --amber:#c47f00;--amber-bg:#fff4ce;
+  --red:#a80000;--red-bg:#fde7e9;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6;}
+header{background:var(--azure);color:#fff;padding:1.2rem 2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.azure-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.1rem;opacity:.9;}
+.azure-logo svg{width:30px;height:30px;}
+header h1{font-size:clamp(.95rem,2.5vw,1.35rem);font-weight:600;flex:1;}
+.badge{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);padding:.25rem .75rem;border-radius:2rem;font-size:.75rem;font-weight:600;letter-spacing:.05em;white-space:nowrap;}
+.notice{background:var(--amber-bg);border-left:4px solid var(--amber);color:var(--amber);padding:.6rem 1.2rem;font-size:.78rem;font-family:var(--mono);}
+.notice strong{color:var(--text);}
+.official-note{background:var(--green-bg);border-left:4px solid var(--green);color:var(--green);padding:.6rem 1.2rem;font-size:.78rem;}
+.official-note a{color:var(--green);}
+
+#price-bar{display:flex;align-items:center;gap:1rem;padding:.55rem 1.2rem;background:#fff;border-bottom:1px solid var(--border);font-size:.75rem;flex-wrap:wrap;}
+.price-source{display:flex;align-items:center;gap:.4rem;color:var(--muted);}
+.dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s;}
+.dot.live{background:var(--green);}
+.dot.stale{background:var(--amber);}
+.dot.loading{background:var(--azure);animation:pulse 1s infinite;}
+#last-updated{font-family:var(--mono);font-size:.7rem;color:var(--muted);}
+#refresh-status{font-size:.7rem;color:var(--muted);font-style:italic;flex:1;}
+.btn-refresh{display:flex;align-items:center;gap:.4rem;padding:.35rem .9rem;background:var(--azure);color:#fff;border:none;border-radius:4px;font-family:var(--sans);font-size:.75rem;font-weight:600;cursor:pointer;transition:background .15s;margin-left:auto;white-space:nowrap;}
+.btn-refresh:hover{background:var(--azure-dark);}
+.btn-refresh:disabled{background:#aaa;cursor:not-allowed;}
+.btn-refresh svg{width:14px;height:14px;}
+.btn-refresh.spinning svg{animation:spin .7s linear infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.layout{display:grid;grid-template-columns:1fr 380px;gap:1.5rem;padding:1.5rem 2rem;max-width:1400px;margin:0 auto;}
+@media(max-width:1000px){.layout{grid-template-columns:1fr;}}
+.section-title{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--azure);margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:2px solid var(--azure-light);}
+.component-grid{display:flex;flex-direction:column;gap:.5rem;}
+.component-card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:box-shadow .15s;position:relative;}
+.component-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.component-card.disabled{opacity:.5;}
+.card-header{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;cursor:pointer;user-select:none;}
+.card-header:hover{background:var(--azure-light);}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0;}
+.toggle-switch input{display:none;}
+.toggle-switch .slider{position:absolute;inset:0;background:#ccc;border-radius:20px;cursor:pointer;transition:.2s;}
+.toggle-switch .slider:before{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;left:3px;top:3px;transition:.2s;}
+.toggle-switch input:checked+.slider{background:var(--azure);}
+.toggle-switch input:checked+.slider:before{transform:translateX(16px);}
+.card-icon{width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.card-info{flex:1;min-width:0;}
+.card-name{font-size:.88rem;font-weight:600;}
+.card-desc{font-size:.7rem;color:var(--muted);margin-top:.1rem;}
+.card-cost{text-align:right;flex-shrink:0;}
+.card-cost .amount{font-family:var(--mono);font-size:.88rem;font-weight:600;color:var(--azure-dark);}
+.card-cost .label{font-size:.6rem;color:var(--muted);}
+.card-body{border-top:1px solid var(--border);padding:.75rem 1rem;background:#fafbfc;display:none;}
+.card-body.open{display:block;}
+.param-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;flex-wrap:wrap;}
+.param-row:last-child{margin-bottom:0;}
+.param-label{font-size:.75rem;color:var(--muted);width:145px;flex-shrink:0;}
+.param-control{display:flex;align-items:center;gap:.5rem;flex:1;}
+select,input[type=range]{font-family:var(--sans);font-size:.8rem;border:1px solid var(--border);border-radius:4px;padding:.25rem .5rem;background:#fff;color:var(--text);cursor:pointer;}
+select:focus,input:focus{outline:2px solid var(--azure);outline-offset:1px;}
+input[type=range]{padding:0;border:none;-webkit-appearance:none;height:4px;background:var(--border);border-radius:2px;flex:1;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--azure);border-radius:50%;cursor:pointer;}
+.param-value{font-family:var(--mono);font-size:.75rem;color:var(--azure-dark);font-weight:600;min-width:55px;text-align:right;}
+.note{font-size:.68rem;color:var(--muted);margin-top:.5rem;font-style:italic;line-height:1.6;}
+.price-tag{display:inline-block;font-family:var(--mono);font-size:.65rem;background:var(--azure-light);color:var(--azure-dark);padding:.1rem .35rem;border-radius:3px;margin:0 .1rem;font-style:normal;}
+
+.summary-panel{position:sticky;top:1rem;height:fit-content;}
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);}
+.summary-header{background:var(--azure-dark);color:#fff;padding:1rem 1.25rem;}
+.summary-header h2{font-size:1rem;font-weight:700;margin-bottom:.2rem;}
+.summary-header p{font-size:.75rem;opacity:.8;}
+.total-block{padding:1.25rem;border-bottom:1px solid var(--border);text-align:center;background:var(--azure-light);}
+.total-amount{font-family:var(--mono);font-size:2.4rem;font-weight:700;color:var(--azure-dark);line-height:1;}
+.total-amount small{font-size:1.1rem;font-weight:400;opacity:.7;}
+.total-label{font-size:.72rem;color:var(--muted);margin-top:.3rem;}
+.annual-line{font-family:var(--mono);font-size:.85rem;color:var(--azure);margin-top:.4rem;font-weight:600;}
+.breakdown-list{padding:.75rem 1.25rem;border-bottom:1px solid var(--border);max-height:280px;overflow-y:auto;}
+.breakdown-item{display:flex;justify-content:space-between;align-items:baseline;padding:.3rem 0;font-size:.78rem;border-bottom:1px dotted var(--border);}
+.breakdown-item:last-child{border-bottom:none;}
+.breakdown-item .item-cost{font-family:var(--mono);font-size:.75rem;color:var(--azure-dark);font-weight:600;}
+.breakdown-item.disabled-row .item-name,.breakdown-item.disabled-row .item-cost{color:#bbb;text-decoration:line-through;}
+.chart-wrap{padding:1rem 1.25rem;border-bottom:1px solid var(--border);}
+.chart-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;font-size:.7rem;}
+.bar-label{width:100px;color:var(--muted);font-size:.68rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.bar-track{flex:1;height:10px;background:var(--border);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--azure);border-radius:3px;transition:width .4s ease;}
+.bar-val{font-family:var(--mono);font-size:.68rem;color:var(--azure-dark);width:60px;text-align:right;}
+.summary-footer{padding:.75rem 1.25rem;}
+.summary-footer p{font-size:.68rem;color:var(--muted);line-height:1.5;}
+.summary-footer a{color:var(--azure);text-decoration:none;}
+.summary-footer a:hover{text-decoration:underline;}
+.btn-export{width:100%;margin-top:.75rem;padding:.6rem;background:var(--azure);color:#fff;border:none;border-radius:4px;font-family:var(--sans);font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s;}
+.btn-export:hover{background:var(--azure-dark);}
+.category-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .4rem;}
+.category-label:first-child{margin-top:0;}
+
+/* card updating overlay */
+.card-updating::after{content:'Refreshing…';position:absolute;inset:0;background:rgba(255,255,255,.82);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--azure);font-family:var(--mono);z-index:5;}
+
+/* flash on price change */
+@keyframes flashGreen{0%{background:var(--green-bg);}100%{background:transparent;}}
+.price-changed{animation:flashGreen 1.8s ease-out;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="azure-logo">
+    <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M33.34 6H57.6l-25.4 75.2H7.96L33.34 6Z" fill="white" opacity=".9"/>
+      <path d="M60.13 6h22.3L57.73 50.7l-9.6 28.44L33.34 57.17l26.79-51.17Z" fill="white" opacity=".6"/>
+      <path d="M7.97 81.2h80.07L72.36 96H7.97Z" fill="white" opacity=".85"/>
+    </svg>
+    Microsoft Azure
+  </div>
+  <h1>Hub-Spoke Landing Zone Cost Estimator</h1>
+  <div class="badge">📍 West Europe · EUR · Pay-as-you-go</div>
+</header>
+
+<div class="notice">
+  <strong>⚠ Official Microsoft Status:</strong> No pre-built fixed-cost template exists for hub-spoke landing zone. The Architecture Center links only to the general Azure Pricing Calculator. This tool builds that estimate using published EUR prices — refreshable live below.
+</div>
+<div class="official-note">
+  ✅ <strong>What Microsoft provides:</strong>
+  <a href="https://azure.microsoft.com/en-us/pricing/calculator/" target="_blank">Azure Pricing Calculator ↗</a> (manual, component-by-component) ·
+  <a href="https://learn.microsoft.com/en-us/azure/architecture/networking/architecture/hub-spoke" target="_blank">Hub-Spoke Architecture reference ↗</a>
+</div>
+
+<div id="price-bar">
+  <div class="price-source">
+    <span class="dot stale" id="status-dot"></span>
+    <span id="price-source-label">Prices: built-in baseline — click Refresh to fetch latest</span>
+  </div>
+  <span id="last-updated"></span>
+  <span id="refresh-status"></span>
+  <button class="btn-refresh" id="btn-refresh" onclick="fetchLivePrices()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
+    Refresh Live Prices
+  </button>
+</div>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="section-title">🔧 Configure Core Hub Components — expand each card to adjust</div>
+    <div class="component-grid">
+
+      <div class="category-label">Hub — Networking &amp; Connectivity</div>
+
+      <div class="component-card" id="card-firewall">
+        <div class="card-header" onclick="toggleCard('firewall')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-firewall" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#fde7e9;">🔥</div>
+          <div class="card-info"><div class="card-name">Azure Firewall</div><div class="card-desc">Central hub egress &amp; east-west traffic control</div></div>
+          <div class="card-cost"><div class="amount" id="cost-firewall">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-firewall">
+          <div class="param-row">
+            <span class="param-label">SKU</span>
+            <div class="param-control">
+              <select id="fw-sku" onchange="recalc()">
+                <option value="basic">Basic</option>
+                <option value="standard" selected>Standard</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Data Processed (GB/mo)</span>
+            <div class="param-control">
+              <input type="range" id="fw-data" min="0" max="5000" step="100" value="500" oninput="updateVal('fw-data','fw-data-val','GB');recalc()">
+              <span class="param-value" id="fw-data-val">500 GB</span>
+            </div>
+          </div>
+          <p class="note" id="note-firewall"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-vpn">
+        <div class="card-header" onclick="toggleCard('vpn')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-vpn" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#e6f2fb;">🔌</div>
+          <div class="card-info"><div class="card-name">VPN Gateway</div><div class="card-desc">On-premises connectivity via IPsec/IKE tunnels</div></div>
+          <div class="card-cost"><div class="amount" id="cost-vpn">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-vpn">
+          <div class="param-row">
+            <span class="param-label">SKU</span>
+            <div class="param-control">
+              <select id="vpn-sku" onchange="recalc()">
+                <option value="basic">Basic (dev only)</option>
+                <option value="vpngw1" selected>VpnGw1 — 650 Mbps</option>
+                <option value="vpngw2">VpnGw2 — 1 Gbps</option>
+                <option value="vpngw3">VpnGw3 — 1.25 Gbps</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">S2S Tunnels</span>
+            <div class="param-control">
+              <input type="range" id="vpn-tunnels" min="1" max="10" step="1" value="2" oninput="updateVal('vpn-tunnels','vpn-tunnels-val','');recalc()">
+              <span class="param-value" id="vpn-tunnels-val">2</span>
+            </div>
+          </div>
+          <p class="note" id="note-vpn"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-er">
+        <div class="card-header" onclick="toggleCard('er')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-er" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#f0f0f0;">🌐</div>
+          <div class="card-info"><div class="card-name">ExpressRoute Gateway</div><div class="card-desc">Dedicated private circuit to on-prem (optional)</div></div>
+          <div class="card-cost"><div class="amount" id="cost-er">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-er">
+          <div class="param-row">
+            <span class="param-label">Circuit SKU</span>
+            <div class="param-control">
+              <select id="er-sku" onchange="recalc()">
+                <option value="std50">Standard 50 Mbps</option>
+                <option value="std100" selected>Standard 100 Mbps</option>
+                <option value="prem1g">Premium 1 Gbps</option>
+              </select>
+            </div>
+          </div>
+          <p class="note" id="note-er"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-peering">
+        <div class="card-header" onclick="toggleCard('peering')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-peering" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#e6f2fb;">🔗</div>
+          <div class="card-info"><div class="card-name">VNet Peering (Hub ↔ Spokes)</div><div class="card-desc">Intra-region peering charged per GB each direction</div></div>
+          <div class="card-cost"><div class="amount" id="cost-peering">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-peering">
+          <div class="param-row">
+            <span class="param-label">Number of Spokes</span>
+            <div class="param-control">
+              <input type="range" id="peer-spokes" min="1" max="10" step="1" value="3" oninput="updateVal('peer-spokes','peer-spokes-val','');recalc()">
+              <span class="param-value" id="peer-spokes-val">3</span>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Data Transfer (GB/mo)</span>
+            <div class="param-control">
+              <input type="range" id="peer-data" min="0" max="5000" step="100" value="500" oninput="updateVal('peer-data','peer-data-val','GB');recalc()">
+              <span class="param-value" id="peer-data-val">500 GB</span>
+            </div>
+          </div>
+          <p class="note" id="note-peering"></p>
+        </div>
+      </div>
+
+      <div class="category-label">Hub — Security</div>
+
+      <div class="component-card" id="card-bastion">
+        <div class="card-header" onclick="toggleCard('bastion')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-bastion" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#fff4ce;">🛡️</div>
+          <div class="card-info"><div class="card-name">Azure Bastion</div><div class="card-desc">Secure RDP/SSH to VMs without public IPs</div></div>
+          <div class="card-cost"><div class="amount" id="cost-bastion">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-bastion">
+          <div class="param-row">
+            <span class="param-label">SKU</span>
+            <div class="param-control">
+              <select id="bastion-sku" onchange="recalc()">
+                <option value="basic">Basic</option>
+                <option value="standard" selected>Standard</option>
+              </select>
+            </div>
+          </div>
+          <p class="note" id="note-bastion"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-ddos">
+        <div class="card-header" onclick="toggleCard('ddos')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-ddos" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#fde7e9;">🚨</div>
+          <div class="card-info"><div class="card-name">DDoS Protection</div><div class="card-desc">Network Protection plan — recommended for enterprise</div></div>
+          <div class="card-cost"><div class="amount" id="cost-ddos">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-ddos">
+          <div class="param-row">
+            <span class="param-label">Tier</span>
+            <div class="param-control">
+              <select id="ddos-tier" onchange="recalc()">
+                <option value="ip">IP Protection (per IP/mo)</option>
+                <option value="network" selected>Network Protection (flat/mo)</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Public IPs (IP tier only)</span>
+            <div class="param-control">
+              <input type="range" id="ddos-ips" min="1" max="20" step="1" value="3" oninput="updateVal('ddos-ips','ddos-ips-val','IPs');recalc()">
+              <span class="param-value" id="ddos-ips-val">3 IPs</span>
+            </div>
+          </div>
+          <p class="note" id="note-ddos"></p>
+        </div>
+      </div>
+
+      <div class="category-label">Hub — Monitoring &amp; Management</div>
+
+      <div class="component-card" id="card-logs">
+        <div class="card-header" onclick="toggleCard('logs')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-logs" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#dff6dd;">📊</div>
+          <div class="card-info"><div class="card-name">Log Analytics Workspace</div><div class="card-desc">Azure Monitor + diagnostic logs for all hub resources</div></div>
+          <div class="card-cost"><div class="amount" id="cost-logs">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-logs">
+          <div class="param-row">
+            <span class="param-label">Data Ingestion (GB/day)</span>
+            <div class="param-control">
+              <input type="range" id="logs-gb" min="1" max="100" step="1" value="10" oninput="updateVal('logs-gb','logs-gb-val','GB/day');recalc()">
+              <span class="param-value" id="logs-gb-val">10 GB/day</span>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Retention (days)</span>
+            <div class="param-control">
+              <select id="logs-ret" onchange="recalc()">
+                <option value="31">31 days (free tier)</option>
+                <option value="90">90 days</option>
+                <option value="180">180 days</option>
+              </select>
+            </div>
+          </div>
+          <p class="note" id="note-logs"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-pip">
+        <div class="card-header" onclick="toggleCard('pip')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-pip" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#e6f2fb;">🌍</div>
+          <div class="card-info"><div class="card-name">Public IP Addresses</div><div class="card-desc">Static IPs for Firewall, VPN Gateway, Bastion</div></div>
+          <div class="card-cost"><div class="amount" id="cost-pip">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-pip">
+          <div class="param-row">
+            <span class="param-label">Number of Static IPs</span>
+            <div class="param-control">
+              <input type="range" id="pip-count" min="1" max="10" step="1" value="3" oninput="updateVal('pip-count','pip-count-val','IPs');recalc()">
+              <span class="param-value" id="pip-count-val">3 IPs</span>
+            </div>
+          </div>
+          <p class="note" id="note-pip"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-dns">
+        <div class="card-header" onclick="toggleCard('dns')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-dns" checked onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#f0f0f0;">🗂️</div>
+          <div class="card-info"><div class="card-name">Azure Private DNS Zones</div><div class="card-desc">Private endpoint DNS resolution across all spokes</div></div>
+          <div class="card-cost"><div class="amount" id="cost-dns">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-dns">
+          <div class="param-row">
+            <span class="param-label">DNS Zones</span>
+            <div class="param-control">
+              <input type="range" id="dns-zones" min="1" max="20" step="1" value="5" oninput="updateVal('dns-zones','dns-zones-val','zones');recalc()">
+              <span class="param-value" id="dns-zones-val">5 zones</span>
+            </div>
+          </div>
+          <p class="note" id="note-dns"></p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="summary-panel">
+    <div class="summary-card">
+      <div class="summary-header">
+        <h2>💰 Monthly Estimate</h2>
+        <p>Hub platform only · West Europe · Pay-as-you-go · EUR</p>
+      </div>
+      <div class="total-block">
+        <div class="total-amount"><small>€</small><span id="grand-total">0</span></div>
+        <div class="total-label">estimated per month</div>
+        <div class="annual-line">≈ €<span id="annual-total">0</span> / year</div>
+      </div>
+      <div class="breakdown-list" id="breakdown-list"></div>
+      <div class="chart-wrap" id="chart-wrap"></div>
+      <div class="summary-footer">
+        <p>
+          ⚠ Hub platform estimate only. VM, storage &amp; spoke workload costs not included.<br><br>
+          DDoS Network Protection is the largest optional item (~€2,944/mo). Without it the hub baseline is typically <strong>€400–€900/mo</strong>.<br><br>
+          For official quotes: <a href="https://azure.microsoft.com/en-us/pricing/calculator/" target="_blank">Azure Pricing Calculator ↗</a>
+        </p>
+        <button class="btn-export" onclick="window.print()">⎙ Print / Export PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  SINGLE SOURCE OF TRUTH — all EUR prices live in this object only
+//  fetchLivePrices() patches it; calcCosts() reads exclusively from it
+// ═══════════════════════════════════════════════════════════════════
+const PRICES = {
+  firewall: {
+    basic:           338,    // €/month fixed deployment
+    standard:        912,
+    premium:        1278,
+    perGbProcessed:  0.016, // €/GB
+  },
+  vpn: {
+    basic:            26,    // €/month
+    vpngw1:          139,
+    vpngw2:          358,
+    vpngw3:          913,
+    tunnelHourly:    0.011, // €/hr per S2S tunnel
+  },
+  expressroute: {
+    std50Circuit:     55,   // €/month circuit
+    std100Circuit:   110,
+    prem1gCircuit:  1440,
+    erGw1AZ:         146,  // €/month gateway
+  },
+  peering: {
+    perGbPerDirection: 0.008, // €/GB each way
+  },
+  bastion: {
+    basicHourly:     0.169,
+    standardHourly:  0.256,
+  },
+  ddos: {
+    networkFlat:    2944,   // €/month
+    perIpPerMonth:   199,   // €/IP/month
+  },
+  logs: {
+    perGbIngested:   2.47,  // €/GB Pay-as-you-go
+    retentionPerGb:  0.12,  // €/GB/month beyond 31 days
+  },
+  pip: {
+    standardStaticHourly: 0.005, // €/hr
+  },
+  dns: {
+    perZonePerMonth:  0.45, // €/zone/month
+    baseQueryCost:    2.00, // €/month nominal query cost
+  },
+  _hoursPerMonth: 744,
+  _source: 'baseline',
+  _fetchedAt: null,
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  DOM helpers
+// ═══════════════════════════════════════════════════════════════════
+const el  = id => document.getElementById(id);
+const val = id => el(id).value;
+const flt = id => parseFloat(el(id).value);
+const int = id => parseInt(el(id).value);
+const on  = id => el('en-'+id).checked;
+const fmt = n  => n.toLocaleString('de-DE', {minimumFractionDigits:0, maximumFractionDigits:0});
+const tag = (v, unit='') => `<span class="price-tag">€${v}${unit}</span>`;
+
+function updateVal(sliderId, valId, unit) {
+  el(valId).textContent = el(sliderId).value + (unit ? ' '+unit : '');
+}
+function toggleCard(id) {
+  el('body-'+id).classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CALCULATION ENGINE — reads only from PRICES
+// ═══════════════════════════════════════════════════════════════════
+function calcCosts() {
+  const h = PRICES._hoursPerMonth;
+  const c = {};
+
+  const fwSku  = val('fw-sku');
+  c.firewall = on('firewall')
+    ? PRICES.firewall[fwSku] + flt('fw-data') * PRICES.firewall.perGbProcessed
+    : 0;
+
+  const vpnSku = val('vpn-sku');
+  c.vpn = on('vpn')
+    ? PRICES.vpn[vpnSku] + int('vpn-tunnels') * PRICES.vpn.tunnelHourly * h
+    : 0;
+
+  const erMap = { std50: PRICES.expressroute.std50Circuit, std100: PRICES.expressroute.std100Circuit, prem1g: PRICES.expressroute.prem1gCircuit };
+  c.er = on('er') ? erMap[val('er-sku')] + PRICES.expressroute.erGw1AZ : 0;
+
+  c.peering = on('peering')
+    ? int('peer-spokes') * flt('peer-data') * PRICES.peering.perGbPerDirection * 2
+    : 0;
+
+  const bHr = val('bastion-sku') === 'basic' ? PRICES.bastion.basicHourly : PRICES.bastion.standardHourly;
+  c.bastion = on('bastion') ? bHr * h : 0;
+
+  c.ddos = on('ddos')
+    ? (val('ddos-tier') === 'network' ? PRICES.ddos.networkFlat : int('ddos-ips') * PRICES.ddos.perIpPerMonth)
+    : 0;
+
+  const logsGb  = flt('logs-gb');
+  const logsRet = int('logs-ret');
+  let logsCost = logsGb * 30 * PRICES.logs.perGbIngested;
+  if (logsRet > 31) logsCost += logsGb * 30 * ((logsRet - 31) / 30) * PRICES.logs.retentionPerGb;
+  c.logs = on('logs') ? logsCost : 0;
+
+  c.pip = on('pip') ? int('pip-count') * PRICES.pip.standardStaticHourly * h : 0;
+
+  c.dns = on('dns') ? int('dns-zones') * PRICES.dns.perZonePerMonth + PRICES.dns.baseQueryCost : 0;
+
+  return c;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RECALC — updates UI from calcCosts() results
+// ═══════════════════════════════════════════════════════════════════
+const LABELS  = {firewall:'Azure Firewall',vpn:'VPN Gateway',er:'ExpressRoute',peering:'VNet Peering',bastion:'Azure Bastion',ddos:'DDoS Protection',logs:'Log Analytics',pip:'Public IPs',dns:'Private DNS'};
+const COLORS  = ['#0078d4','#005a9e','#2b88d8','#71afe5','#004578','#a9d3f2','#00188f','#c8e6fb','#deecf9'];
+
+function recalc() {
+  const costs = calcCosts();
+  const keys  = Object.keys(costs);
+  const total = Object.values(costs).reduce((a,b)=>a+b, 0);
+
+  keys.forEach(k => {
+    const costEl = el('cost-'+k);
+    if (costEl) costEl.textContent = '€'+fmt(costs[k]);
+    const card = el('card-'+k);
+    if (card) { on(k) ? card.classList.remove('disabled') : card.classList.add('disabled'); }
+  });
+
+  el('grand-total').textContent  = fmt(total);
+  el('annual-total').textContent = fmt(total * 12);
+
+  el('breakdown-list').innerHTML = keys.map(k =>
+    `<div class="breakdown-item ${on(k)?'':'disabled-row'}">
+       <span class="item-name">${LABELS[k]}</span>
+       <span class="item-cost">€${fmt(costs[k])}</span>
+     </div>`).join('');
+
+  const sorted = keys.slice().sort((a,b)=>costs[b]-costs[a]).filter(k=>costs[k]>0);
+  el('chart-wrap').innerHTML =
+    '<div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;">Cost Distribution</div>' +
+    sorted.map((k,i) =>
+      `<div class="chart-bar">
+         <span class="bar-label">${LABELS[k]}</span>
+         <div class="bar-track"><div class="bar-fill" style="width:${(costs[k]/total*100).toFixed(1)}%;background:${COLORS[i%COLORS.length]};"></div></div>
+         <span class="bar-val">${(costs[k]/total*100).toFixed(0)}%</span>
+       </div>`).join('');
+
+  refreshNotes();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DYNAMIC NOTES — always reflect current PRICES values
+// ═══════════════════════════════════════════════════════════════════
+function refreshNotes() {
+  const P = PRICES;
+  const h = P._hoursPerMonth;
+  el('note-firewall').innerHTML =
+    `Fixed/mo: Basic ${tag(fmt(P.firewall.basic))} · Standard ${tag(fmt(P.firewall.standard))} · Premium ${tag(fmt(P.firewall.premium))} + data ${tag(P.firewall.perGbProcessed,'/GB')}.`;
+  el('note-vpn').innerHTML =
+    `VpnGw1 ${tag(fmt(P.vpn.vpngw1),'/mo')} · VpnGw2 ${tag(fmt(P.vpn.vpngw2),'/mo')} · VpnGw3 ${tag(fmt(P.vpn.vpngw3),'/mo')} + ${tag(P.vpn.tunnelHourly,'/hr')} per S2S tunnel.`;
+  el('note-er').innerHTML =
+    `Std-100 circuit ${tag(fmt(P.expressroute.std100Circuit),'/mo')} · Prem-1G ${tag(fmt(P.expressroute.prem1gCircuit),'/mo')} + ErGw1AZ gateway ${tag(fmt(P.expressroute.erGw1AZ),'/mo')}.`;
+  el('note-peering').innerHTML =
+    `${tag(P.peering.perGbPerDirection,'/GB')} per direction per peering link × 2 directions. VNet creation is free.`;
+  el('note-bastion').innerHTML =
+    `Basic ${tag(P.bastion.basicHourly,'/hr')} · Standard ${tag(P.bastion.standardHourly,'/hr')} × ${h} hrs/mo. First 5 GB outbound free.`;
+  el('note-ddos').innerHTML =
+    `IP Protection ${tag(fmt(P.ddos.perIpPerMonth),'/IP/mo')} · Network Protection flat ${tag(fmt(P.ddos.networkFlat),'/mo')}. Infrastructure DDoS is free.`;
+  el('note-logs').innerHTML =
+    `Pay-as-you-go ingestion ${tag(P.logs.perGbIngested,'/GB')} + extended retention ${tag(P.logs.retentionPerGb,'/GB/mo')} beyond 31 days (free). Activity Logs always free.`;
+  el('note-pip').innerHTML =
+    `Standard Static ${tag(P.pip.standardStaticHourly,'/hr')} × ${h} hrs = ${tag((P.pip.standardStaticHourly*h).toFixed(2),'/IP/mo')}. First IP free when attached to running resource.`;
+  el('note-dns').innerHTML =
+    `${tag(P.dns.perZonePerMonth,'/zone/mo')} + ${tag(P.dns.baseQueryCost,'')} baseline query cost. Typical landing zone uses 5–15 zones for PaaS private endpoints.`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIVE PRICE FETCH — calls Anthropic API, patches PRICES, recalcs
+// ═══════════════════════════════════════════════════════════════════
+async function fetchLivePrices() {
+  const btn      = el('btn-refresh');
+  const dot      = el('status-dot');
+  const statusEl = el('refresh-status');
+  const sourceEl = el('price-source-label');
+
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  dot.className = 'dot loading';
+  statusEl.textContent = 'Querying Azure pricing via AI — this takes ~10 seconds…';
+
+  document.querySelectorAll('.component-card').forEach(c => c.classList.add('card-updating'));
+
+  const prompt = `You are an Azure pricing expert. Return ONLY a valid JSON object (no markdown, no backticks, no extra text) with the latest Microsoft Azure Pay-as-You-Go prices for the West Europe (Amsterdam) region in EUR. Use exactly these keys and numeric values:
+
+{
+  "firewall_basic_monthly": number,
+  "firewall_standard_monthly": number,
+  "firewall_premium_monthly": number,
+  "firewall_per_gb_processed": number,
+  "vpn_basic_monthly": number,
+  "vpn_gw1_monthly": number,
+  "vpn_gw2_monthly": number,
+  "vpn_gw3_monthly": number,
+  "vpn_tunnel_hourly": number,
+  "er_std50_circuit_monthly": number,
+  "er_std100_circuit_monthly": number,
+  "er_prem1g_circuit_monthly": number,
+  "er_gw1az_monthly": number,
+  "peering_per_gb_per_direction": number,
+  "bastion_basic_hourly": number,
+  "bastion_standard_hourly": number,
+  "ddos_network_flat_monthly": number,
+  "ddos_per_ip_monthly": number,
+  "logs_per_gb_ingested": number,
+  "logs_retention_per_gb_month": number,
+  "pip_standard_static_hourly": number,
+  "dns_per_zone_monthly": number,
+  "confidence": "high" | "medium" | "low",
+  "notes": "string — brief data-freshness caveat"
+}
+
+All monetary values are plain numbers in EUR. If uncertain on any value use your best estimate and set confidence to medium or low accordingly.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const raw   = data.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const clean = raw.replace(/```json|```/gi, '').trim();
+    const p     = JSON.parse(clean);
+
+    // Snapshot old values to detect what changed
+    const snapshot = JSON.parse(JSON.stringify(PRICES));
+
+    // Patch PRICES — use nullish coalescing so missing keys keep current values
+    PRICES.firewall.basic              = p.firewall_basic_monthly          ?? PRICES.firewall.basic;
+    PRICES.firewall.standard           = p.firewall_standard_monthly       ?? PRICES.firewall.standard;
+    PRICES.firewall.premium            = p.firewall_premium_monthly        ?? PRICES.firewall.premium;
+    PRICES.firewall.perGbProcessed     = p.firewall_per_gb_processed       ?? PRICES.firewall.perGbProcessed;
+    PRICES.vpn.basic                   = p.vpn_basic_monthly               ?? PRICES.vpn.basic;
+    PRICES.vpn.vpngw1                  = p.vpn_gw1_monthly                 ?? PRICES.vpn.vpngw1;
+    PRICES.vpn.vpngw2                  = p.vpn_gw2_monthly                 ?? PRICES.vpn.vpngw2;
+    PRICES.vpn.vpngw3                  = p.vpn_gw3_monthly                 ?? PRICES.vpn.vpngw3;
+    PRICES.vpn.tunnelHourly            = p.vpn_tunnel_hourly               ?? PRICES.vpn.tunnelHourly;
+    PRICES.expressroute.std50Circuit   = p.er_std50_circuit_monthly        ?? PRICES.expressroute.std50Circuit;
+    PRICES.expressroute.std100Circuit  = p.er_std100_circuit_monthly       ?? PRICES.expressroute.std100Circuit;
+    PRICES.expressroute.prem1gCircuit  = p.er_prem1g_circuit_monthly       ?? PRICES.expressroute.prem1gCircuit;
+    PRICES.expressroute.erGw1AZ        = p.er_gw1az_monthly                ?? PRICES.expressroute.erGw1AZ;
+    PRICES.peering.perGbPerDirection   = p.peering_per_gb_per_direction    ?? PRICES.peering.perGbPerDirection;
+    PRICES.bastion.basicHourly         = p.bastion_basic_hourly            ?? PRICES.bastion.basicHourly;
+    PRICES.bastion.standardHourly      = p.bastion_standard_hourly         ?? PRICES.bastion.standardHourly;
+    PRICES.ddos.networkFlat            = p.ddos_network_flat_monthly       ?? PRICES.ddos.networkFlat;
+    PRICES.ddos.perIpPerMonth          = p.ddos_per_ip_monthly             ?? PRICES.ddos.perIpPerMonth;
+    PRICES.logs.perGbIngested          = p.logs_per_gb_ingested            ?? PRICES.logs.perGbIngested;
+    PRICES.logs.retentionPerGb         = p.logs_retention_per_gb_month     ?? PRICES.logs.retentionPerGb;
+    PRICES.pip.standardStaticHourly    = p.pip_standard_static_hourly      ?? PRICES.pip.standardStaticHourly;
+    PRICES.dns.perZonePerMonth         = p.dns_per_zone_monthly            ?? PRICES.dns.perZonePerMonth;
+    PRICES._source    = 'live-ai';
+    PRICES._fetchedAt = new Date();
+
+    flashChanged(snapshot);
+
+    const conf = p.confidence || 'medium';
+    dot.className   = 'dot live';
+    sourceEl.textContent = `Prices: AI-refreshed · confidence: ${conf}`;
+    el('last-updated').textContent = `Updated: ${PRICES._fetchedAt.toLocaleTimeString()}`;
+    statusEl.textContent = p.notes ? `ℹ️  ${p.notes}` : '✅ Prices refreshed successfully.';
+
+  } catch (err) {
+    dot.className = 'dot stale';
+    statusEl.textContent = `⚠ Refresh failed (${err.message}) — baseline prices still in use.`;
+    console.error('Price refresh error:', err);
+  } finally {
+    document.querySelectorAll('.component-card').forEach(c => c.classList.remove('card-updating'));
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+    recalc();
+  }
+}
+
+// Flash cards whose key price changed after refresh
+function flashChanged(snapshot) {
+  const checks = {
+    firewall: snapshot.firewall.standard    !== PRICES.firewall.standard,
+    vpn:      snapshot.vpn.vpngw1           !== PRICES.vpn.vpngw1,
+    er:       snapshot.expressroute.std100Circuit !== PRICES.expressroute.std100Circuit,
+    peering:  snapshot.peering.perGbPerDirection  !== PRICES.peering.perGbPerDirection,
+    bastion:  snapshot.bastion.standardHourly     !== PRICES.bastion.standardHourly,
+    ddos:     snapshot.ddos.networkFlat           !== PRICES.ddos.networkFlat,
+    logs:     snapshot.logs.perGbIngested         !== PRICES.logs.perGbIngested,
+    pip:      snapshot.pip.standardStaticHourly   !== PRICES.pip.standardStaticHourly,
+    dns:      snapshot.dns.perZonePerMonth        !== PRICES.dns.perZonePerMonth,
+  };
+  Object.entries(checks).forEach(([id, changed]) => {
+    if (!changed) return;
+    const card = el('card-'+id);
+    if (!card) return;
+    card.classList.remove('price-changed');
+    void card.offsetWidth;
+    card.classList.add('price-changed');
+    setTimeout(() => card.classList.remove('price-changed'), 2200);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+recalc();
+</script>
+</body>
+</html>
