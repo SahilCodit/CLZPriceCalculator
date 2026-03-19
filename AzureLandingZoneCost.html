@@ -392,8 +392,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
         </div>
       </div>
 
-      <div class="category-label">Shared Spoke — Services</div>
-
       <div class="component-card" id="card-dnsresolver">
         <div class="card-header" onclick="toggleCard('dnsresolver')">
           <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-dnsresolver" onchange="recalc()"><span class="slider"></span></label>
@@ -448,6 +446,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
         </div>
       </div>
 
+      <div class="category-label">Shared Spoke — Services</div>
+
       <div class="component-card" id="card-apim">
         <div class="card-header" onclick="toggleCard('apim')">
           <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-apim" onchange="recalc()"><span class="slider"></span></label>
@@ -475,6 +475,35 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
             </div>
           </div>
           <p class="note" id="note-apim"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-acr">
+        <div class="card-header" onclick="toggleCard('acr')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-acr" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#e6f2fb;">📦</div>
+          <div class="card-info"><div class="card-name">Container Registry</div><div class="card-desc">Shared private container image registry for spoke workloads</div></div>
+          <div class="card-cost"><div class="amount" id="cost-acr">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-acr">
+          <div class="param-row">
+            <span class="param-label">SKU</span>
+            <div class="param-control">
+              <select id="acr-sku" onchange="recalc()">
+                <option value="basic">Basic (~€5/mo)</option>
+                <option value="standard" selected>Standard (~€20/mo)</option>
+                <option value="premium">Premium (~€50/mo)</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Storage Used (GB)</span>
+            <div class="param-control">
+              <input type="range" id="acr-storage" min="0" max="500" step="10" value="50" oninput="updateVal('acr-storage','acr-storage-val','GB');recalc()">
+              <span class="param-value" id="acr-storage-val">50 GB</span>
+            </div>
+          </div>
+          <p class="note" id="note-acr"></p>
         </div>
       </div>
 
@@ -594,6 +623,12 @@ const PRICES = {
     standardHourly:  0.964,  // €/hr  (~€720/mo)
     premiumHourly:   3.133,  // €/hr/unit (~€2,330/mo)
   },
+  acr: {
+    basicDaily:    0.167,  // €/day for Basic registry  (~€5/mo)
+    standardDaily: 0.667,  // €/day for Standard registry (~€20/mo)
+    premiumDaily:  1.667,  // €/day for Premium registry (~€50/mo)
+    storagePerGbMonth: 0.036, // €/GB/month beyond included storage
+  },
   _hoursPerMonth: 744,
   _source: 'baseline',
   _fetchedAt: null,
@@ -686,6 +721,13 @@ function calcCosts() {
     ? (PRICES.apim[safeApimTier + 'Hourly'] || 0) * (safeApimTier === 'premium' ? apimUnits : 1) * h
     : 0;
 
+  const acrSku = val('acr-sku');
+  const acrDailyMap = { basic: PRICES.acr.basicDaily, standard: PRICES.acr.standardDaily, premium: PRICES.acr.premiumDaily };
+  const acrStorage  = flt('acr-storage');
+  c.acr = on('acr')
+    ? (acrDailyMap[acrSku] || PRICES.acr.standardDaily) * 30 + acrStorage * PRICES.acr.storagePerGbMonth
+    : 0;
+
   const rawCustom = parseFloat(el('custom-price').value) || 0;
   c.custom = on('custom') ? Math.max(0, Math.min(rawCustom, 9999999)) : 0;
 
@@ -695,7 +737,7 @@ function calcCosts() {
 // ═══════════════════════════════════════════════════════════════════
 //  RECALC — updates UI from calcCosts() results
 // ═══════════════════════════════════════════════════════════════════
-let   LABELS  = {firewall:'Azure Firewall',vpn:'VPN Gateway',er:'ExpressRoute',peering:'VNet Peering',bastion:'Azure Bastion',ddos:'DDoS Protection',logs:'Log Analytics',pip:'Public IPs',dns:'Private DNS',dnsresolver:'Private DNS Resolver',appgw:'Application Gateway',apim:'API Management',custom:'Custom Line Item'};
+let   LABELS  = {firewall:'Azure Firewall',vpn:'VPN Gateway',er:'ExpressRoute',peering:'VNet Peering',bastion:'Azure Bastion',ddos:'DDoS Protection',logs:'Log Analytics',pip:'Public IPs',dns:'Private DNS',dnsresolver:'Private DNS Resolver',appgw:'Application Gateway',apim:'API Management',acr:'Container Registry',custom:'Custom Line Item'};
 const COLORS  = ['#0078d4','#005a9e','#2b88d8','#71afe5','#004578','#a9d3f2','#00188f','#c8e6fb','#deecf9'];
 
 function recalc() {
@@ -762,6 +804,8 @@ function refreshNotes() {
     `Standard v2: ${tag(P.appGateway.standardV2Hourly,'/hr')} fixed + ${tag(P.appGateway.standardV2CapacityUnitHourly,'/CU/hr')} · WAF v2: ${tag(P.appGateway.wafV2Hourly,'/hr')} fixed + ${tag(P.appGateway.wafV2CapacityUnitHourly,'/CU/hr')}. Min 1 fixed CU always billed.`;
   el('note-apim').innerHTML =
     `Developer ${tag(fmt(P.apim.developerHourly*h),'/mo')} · Basic ${tag(fmt(P.apim.basicHourly*h),'/mo')} · Standard ${tag(fmt(P.apim.standardHourly*h),'/mo')} · Premium ${tag(fmt(P.apim.premiumHourly*h),'/unit/mo')}. Units apply to Premium tier only.`;
+  el('note-acr').innerHTML =
+    `Basic ${tag((P.acr.basicDaily*30).toFixed(0),'/mo')} · Standard ${tag((P.acr.standardDaily*30).toFixed(0),'/mo')} · Premium ${tag((P.acr.premiumDaily*30).toFixed(0),'/mo')} + ${tag(P.acr.storagePerGbMonth,'/GB/mo')} for storage beyond included quota.`;
   el('note-custom').innerHTML =
     'Enter any custom Azure service cost. This will be included in the total and cost breakdown.';
 }
@@ -808,10 +852,10 @@ async function fetchLivePrices() {
   const toMo = p => (p !== null ? p * h : null);
 
   try {
-    statusEl.textContent = 'Fetching live prices for 12 Azure services…';
+    statusEl.textContent = 'Fetching live prices for 13 Azure services…';
 
     const [fwItems, vpnItems, erItems, vnetItems, bastionItems, ddosItems,
-           logsItems, pipItems, dnsItems, resolverItems, appGwItems, apimItems]
+           logsItems, pipItems, dnsItems, resolverItems, appGwItems, apimItems, acrItems]
       = await Promise.all([
         fetchService('Azure Firewall'),
         fetchService('VPN Gateway'),
@@ -825,6 +869,7 @@ async function fetchLivePrices() {
         fetchService('Azure DNS Private Resolver'),
         fetchService('Application Gateway'),
         fetchService('API Management'),
+        fetchService('Container Registry'),
       ]);
 
     const snapshot = JSON.parse(JSON.stringify(PRICES));
@@ -907,7 +952,7 @@ async function fetchLivePrices() {
     if (p_agw_std_cu !== null) PRICES.appGateway.standardV2CapacityUnitHourly = p_agw_std_cu;
     if (p_agw_waf_cu !== null) PRICES.appGateway.wafV2CapacityUnitHourly      = p_agw_waf_cu;
 
-    // ── API Management (new) ────────────────────────────────────────
+    // ── API Management ──────────────────────────────────────────────
     const p_apim_dev  = findItem(apimItems, 'developer');
     const p_apim_bas  = findItem(apimItems, 'basic');
     const p_apim_std  = findItem(apimItems, 'standard');
@@ -916,6 +961,16 @@ async function fetchLivePrices() {
     if (p_apim_bas  !== null) PRICES.apim.basicHourly     = p_apim_bas;
     if (p_apim_std  !== null) PRICES.apim.standardHourly  = p_apim_std;
     if (p_apim_prem !== null) PRICES.apim.premiumHourly   = p_apim_prem;
+
+    // ── Container Registry ──────────────────────────────────────────
+    const p_acr_basic = findItem(acrItems, 'basic')    || findItem(acrItems, 'basic registry');
+    const p_acr_std   = findItem(acrItems, 'standard') || findItem(acrItems, 'standard registry');
+    const p_acr_prem  = findItem(acrItems, 'premium')  || findItem(acrItems, 'premium registry');
+    const p_acr_stor  = findItem(acrItems, 'storage');
+    if (p_acr_basic !== null) PRICES.acr.basicDaily          = p_acr_basic;
+    if (p_acr_std   !== null) PRICES.acr.standardDaily       = p_acr_std;
+    if (p_acr_prem  !== null) PRICES.acr.premiumDaily        = p_acr_prem;
+    if (p_acr_stor  !== null) PRICES.acr.storagePerGbMonth   = p_acr_stor;
 
     PRICES._source    = 'azure-retail-api';
     PRICES._fetchedAt = new Date();
@@ -954,6 +1009,7 @@ function flashChanged(snapshot) {
     dnsresolver: snapshot.privateDnsResolver.inboundEndpointHourly  !== PRICES.privateDnsResolver.inboundEndpointHourly,
     appgw:       snapshot.appGateway.standardV2Hourly !== PRICES.appGateway.standardV2Hourly,
     apim:        snapshot.apim.basicHourly            !== PRICES.apim.basicHourly,
+    acr:         snapshot.acr.standardDaily           !== PRICES.acr.standardDaily,
   };
   Object.entries(checks).forEach(([id, changed]) => {
     if (!changed) return;
