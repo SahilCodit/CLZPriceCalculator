@@ -72,8 +72,9 @@ header h1{font-size:clamp(.95rem,2.5vw,1.35rem);font-weight:600;flex:1;}
 .param-row:last-child{margin-bottom:0;}
 .param-label{font-size:.75rem;color:var(--muted);width:145px;flex-shrink:0;}
 .param-control{display:flex;align-items:center;gap:.5rem;flex:1;}
-select,input[type=range]{font-family:var(--sans);font-size:.8rem;border:1px solid var(--border);border-radius:4px;padding:.25rem .5rem;background:#fff;color:var(--text);cursor:pointer;}
+select,input[type=range],input[type=text],input[type=number]{font-family:var(--sans);font-size:.8rem;border:1px solid var(--border);border-radius:4px;padding:.25rem .5rem;background:#fff;color:var(--text);cursor:pointer;}
 select:focus,input:focus{outline:2px solid var(--azure);outline-offset:1px;}
+input[type=text],input[type=number]{cursor:text;}
 input[type=range]{padding:0;border:none;-webkit-appearance:none;height:4px;background:var(--border);border-radius:2px;flex:1;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--azure);border-radius:50%;cursor:pointer;}
 .param-value{font-family:var(--mono);font-size:.75rem;color:var(--azure-dark);font-weight:600;min-width:55px;text-align:right;}
@@ -391,6 +392,146 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
         </div>
       </div>
 
+      <div class="component-card" id="card-dnsresolver">
+        <div class="card-header" onclick="toggleCard('dnsresolver')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-dnsresolver" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#e6f2fb;">🔍</div>
+          <div class="card-info"><div class="card-name">Private DNS Resolver</div><div class="card-desc">Inbound &amp; outbound DNS forwarding across VNets</div></div>
+          <div class="card-cost"><div class="amount" id="cost-dnsresolver">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-dnsresolver">
+          <div class="param-row">
+            <span class="param-label">Inbound Endpoints</span>
+            <div class="param-control">
+              <input type="range" id="dnsresolver-inbound" min="0" max="5" step="1" value="1" oninput="updateVal('dnsresolver-inbound','dnsresolver-inbound-val','');recalc()">
+              <span class="param-value" id="dnsresolver-inbound-val">1</span>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Outbound Endpoints</span>
+            <div class="param-control">
+              <input type="range" id="dnsresolver-outbound" min="0" max="5" step="1" value="1" oninput="updateVal('dnsresolver-outbound','dnsresolver-outbound-val','');recalc()">
+              <span class="param-value" id="dnsresolver-outbound-val">1</span>
+            </div>
+          </div>
+          <p class="note" id="note-dnsresolver"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-appgw">
+        <div class="card-header" onclick="toggleCard('appgw')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-appgw" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#dff6dd;">⚖️</div>
+          <div class="card-info"><div class="card-name">Application Gateway</div><div class="card-desc">L7 load balancer with optional WAF for spoke workloads</div></div>
+          <div class="card-cost"><div class="amount" id="cost-appgw">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-appgw">
+          <div class="param-row">
+            <span class="param-label">SKU</span>
+            <div class="param-control">
+              <select id="appgw-sku" onchange="recalc()">
+                <option value="standardv2" selected>Standard v2</option>
+                <option value="wafv2">WAF v2</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Capacity Units (avg)</span>
+            <div class="param-control">
+              <input type="range" id="appgw-cu" min="1" max="20" step="1" value="2" oninput="updateVal('appgw-cu','appgw-cu-val','CU');recalc()">
+              <span class="param-value" id="appgw-cu-val">2 CU</span>
+            </div>
+          </div>
+          <p class="note" id="note-appgw"></p>
+        </div>
+      </div>
+
+      <div class="category-label">Shared Spoke — Services</div>
+
+      <div class="component-card" id="card-apim">
+        <div class="card-header" onclick="toggleCard('apim')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-apim" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#fff4ce;">🔧</div>
+          <div class="card-info"><div class="card-name">API Management</div><div class="card-desc">Shared API gateway in spoke for internal &amp; external consumers</div></div>
+          <div class="card-cost"><div class="amount" id="cost-apim">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-apim">
+          <div class="param-row">
+            <span class="param-label">Tier</span>
+            <div class="param-control">
+              <select id="apim-tier" onchange="recalc()">
+                <option value="developer">Developer (~€50/mo)</option>
+                <option value="basic" selected>Basic (~€150/mo)</option>
+                <option value="standard">Standard (~€720/mo)</option>
+                <option value="premium">Premium (~€2,330/mo/unit)</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Units (Premium only)</span>
+            <div class="param-control">
+              <input type="range" id="apim-units" min="1" max="10" step="1" value="1" oninput="updateVal('apim-units','apim-units-val','');recalc()">
+              <span class="param-value" id="apim-units-val">1</span>
+            </div>
+          </div>
+          <p class="note" id="note-apim"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-acr">
+        <div class="card-header" onclick="toggleCard('acr')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-acr" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#e6f2fb;">📦</div>
+          <div class="card-info"><div class="card-name">Container Registry</div><div class="card-desc">Shared private container image registry for spoke workloads</div></div>
+          <div class="card-cost"><div class="amount" id="cost-acr">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-acr">
+          <div class="param-row">
+            <span class="param-label">SKU</span>
+            <div class="param-control">
+              <select id="acr-sku" onchange="recalc()">
+                <option value="basic">Basic (~€5/mo)</option>
+                <option value="standard" selected>Standard (~€20/mo)</option>
+                <option value="premium">Premium (~€50/mo)</option>
+              </select>
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Storage Used (GB)</span>
+            <div class="param-control">
+              <input type="range" id="acr-storage" min="0" max="500" step="10" value="50" oninput="updateVal('acr-storage','acr-storage-val','GB');recalc()">
+              <span class="param-value" id="acr-storage-val">50 GB</span>
+            </div>
+          </div>
+          <p class="note" id="note-acr"></p>
+        </div>
+      </div>
+
+      <div class="component-card" id="card-custom">
+        <div class="card-header" onclick="toggleCard('custom')">
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="en-custom" onchange="recalc()"><span class="slider"></span></label>
+          <div class="card-icon" style="background:#f0f0f0;">✏️</div>
+          <div class="card-info"><div class="card-name" id="custom-name-display">Custom Line Item</div><div class="card-desc">Add any additional Azure service with a known monthly cost</div></div>
+          <div class="card-cost"><div class="amount" id="cost-custom">€0</div><div class="label">/month</div></div>
+        </div>
+        <div class="card-body" id="body-custom">
+          <div class="param-row">
+            <span class="param-label">Service Name</span>
+            <div class="param-control">
+              <input type="text" id="custom-name" placeholder="e.g. Azure Front Door" oninput="updateCustomName();recalc()" style="flex:1;">
+            </div>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Monthly Cost (€)</span>
+            <div class="param-control">
+              <input type="number" id="custom-price" min="0" max="9999999" step="1" value="0" oninput="recalc()" style="width:130px;">
+              <span class="param-value" style="min-width:auto;">€/month</span>
+            </div>
+          </div>
+          <p class="note" id="note-custom">Enter any custom Azure service cost. This will be included in the total and cost breakdown.</p>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -466,6 +607,28 @@ const PRICES = {
     perZonePerMonth:  0.45, // €/zone/month
     baseQueryCost:    2.00, // €/month nominal query cost
   },
+  privateDnsResolver: {
+    inboundEndpointHourly:  0.107, // €/hr per inbound endpoint
+    outboundEndpointHourly: 0.107, // €/hr per outbound endpoint
+  },
+  appGateway: {
+    standardV2Hourly:             0.246, // €/hr fixed (gateway instance)
+    wafV2Hourly:                  0.370, // €/hr fixed (WAF gateway instance)
+    standardV2CapacityUnitHourly: 0.008, // €/CU/hr
+    wafV2CapacityUnitHourly:      0.012, // €/CU/hr
+  },
+  apim: {
+    developerHourly: 0.067,  // €/hr  (~€50/mo)
+    basicHourly:     0.201,  // €/hr  (~€150/mo)
+    standardHourly:  0.964,  // €/hr  (~€720/mo)
+    premiumHourly:   3.133,  // €/hr/unit (~€2,330/mo)
+  },
+  acr: {
+    basicDaily:    0.167,  // €/day for Basic registry  (~€5/mo)
+    standardDaily: 0.667,  // €/day for Standard registry (~€20/mo)
+    premiumDaily:  1.667,  // €/day for Premium registry (~€50/mo)
+    storagePerGbMonth: 0.036, // €/GB/month beyond included storage
+  },
   _hoursPerMonth: 744,
   _source: 'baseline',
   _fetchedAt: null,
@@ -484,6 +647,11 @@ const tag = (v, unit='') => `<span class="price-tag">€${v}${unit}</span>`;
 
 function updateVal(sliderId, valId, unit) {
   el(valId).textContent = el(sliderId).value + (unit ? ' '+unit : '');
+}
+function updateCustomName() {
+  const name = el('custom-name').value.trim() || 'Custom Line Item';
+  el('custom-name-display').textContent = name;
+  LABELS.custom = name;
 }
 function toggleCard(id) {
   el('body-'+id).classList.toggle('open');
@@ -530,13 +698,46 @@ function calcCosts() {
 
   c.dns = on('dns') ? int('dns-zones') * PRICES.dns.perZonePerMonth + PRICES.dns.baseQueryCost : 0;
 
+  const resolverIn  = int('dnsresolver-inbound');
+  const resolverOut = int('dnsresolver-outbound');
+  c.dnsresolver = on('dnsresolver')
+    ? resolverIn * PRICES.privateDnsResolver.inboundEndpointHourly * h
+      + resolverOut * PRICES.privateDnsResolver.outboundEndpointHourly * h
+    : 0;
+
+  const agSku = val('appgw-sku');
+  const agCU  = int('appgw-cu');
+  c.appgw = on('appgw')
+    ? (agSku === 'wafv2'
+        ? PRICES.appGateway.wafV2Hourly * h + agCU * PRICES.appGateway.wafV2CapacityUnitHourly * h
+        : PRICES.appGateway.standardV2Hourly * h + agCU * PRICES.appGateway.standardV2CapacityUnitHourly * h)
+    : 0;
+
+  const apimTier  = val('apim-tier');
+  const apimUnits = int('apim-units');
+  const validApimTiers = ['developer', 'basic', 'standard', 'premium'];
+  const safeApimTier = validApimTiers.includes(apimTier) ? apimTier : 'basic';
+  c.apim = on('apim')
+    ? (PRICES.apim[safeApimTier + 'Hourly'] || 0) * (safeApimTier === 'premium' ? apimUnits : 1) * h
+    : 0;
+
+  const acrSku = val('acr-sku');
+  const acrDailyMap = { basic: PRICES.acr.basicDaily, standard: PRICES.acr.standardDaily, premium: PRICES.acr.premiumDaily };
+  const acrStorage  = flt('acr-storage');
+  c.acr = on('acr')
+    ? (acrDailyMap[acrSku] || PRICES.acr.standardDaily) * 30 + acrStorage * PRICES.acr.storagePerGbMonth
+    : 0;
+
+  const rawCustom = parseFloat(el('custom-price').value) || 0;
+  c.custom = on('custom') ? Math.max(0, Math.min(rawCustom, 9999999)) : 0;
+
   return c;
 }
 
 // ═══════════════════════════════════════════════════════════════════
 //  RECALC — updates UI from calcCosts() results
 // ═══════════════════════════════════════════════════════════════════
-const LABELS  = {firewall:'Azure Firewall',vpn:'VPN Gateway',er:'ExpressRoute',peering:'VNet Peering',bastion:'Azure Bastion',ddos:'DDoS Protection',logs:'Log Analytics',pip:'Public IPs',dns:'Private DNS'};
+let   LABELS  = {firewall:'Azure Firewall',vpn:'VPN Gateway',er:'ExpressRoute',peering:'VNet Peering',bastion:'Azure Bastion',ddos:'DDoS Protection',logs:'Log Analytics',pip:'Public IPs',dns:'Private DNS',dnsresolver:'Private DNS Resolver',appgw:'Application Gateway',apim:'API Management',acr:'Container Registry',custom:'Custom Line Item'};
 const COLORS  = ['#0078d4','#005a9e','#2b88d8','#71afe5','#004578','#a9d3f2','#00188f','#c8e6fb','#deecf9'];
 
 function recalc() {
@@ -597,10 +798,20 @@ function refreshNotes() {
     `Standard Static ${tag(P.pip.standardStaticHourly,'/hr')} × ${h} hrs = ${tag((P.pip.standardStaticHourly*h).toFixed(2),'/IP/mo')}. First IP free when attached to running resource.`;
   el('note-dns').innerHTML =
     `${tag(P.dns.perZonePerMonth,'/zone/mo')} + ${tag(P.dns.baseQueryCost,'')} baseline query cost. Typical landing zone uses 5–15 zones for PaaS private endpoints.`;
+  el('note-dnsresolver').innerHTML =
+    `Inbound endpoint ${tag(P.privateDnsResolver.inboundEndpointHourly,'/hr')} · Outbound endpoint ${tag(P.privateDnsResolver.outboundEndpointHourly,'/hr')} × ${h} hrs/mo. Each endpoint handles conditional forwarding rules.`;
+  el('note-appgw').innerHTML =
+    `Standard v2: ${tag(P.appGateway.standardV2Hourly,'/hr')} fixed + ${tag(P.appGateway.standardV2CapacityUnitHourly,'/CU/hr')} · WAF v2: ${tag(P.appGateway.wafV2Hourly,'/hr')} fixed + ${tag(P.appGateway.wafV2CapacityUnitHourly,'/CU/hr')}. Min 1 fixed CU always billed.`;
+  el('note-apim').innerHTML =
+    `Developer ${tag(fmt(P.apim.developerHourly*h),'/mo')} · Basic ${tag(fmt(P.apim.basicHourly*h),'/mo')} · Standard ${tag(fmt(P.apim.standardHourly*h),'/mo')} · Premium ${tag(fmt(P.apim.premiumHourly*h),'/unit/mo')}. Units apply to Premium tier only.`;
+  el('note-acr').innerHTML =
+    `Basic ${tag((P.acr.basicDaily*30).toFixed(0),'/mo')} · Standard ${tag((P.acr.standardDaily*30).toFixed(0),'/mo')} · Premium ${tag((P.acr.premiumDaily*30).toFixed(0),'/mo')} + ${tag(P.acr.storagePerGbMonth,'/GB/mo')} for storage beyond included quota.`;
+  el('note-custom').innerHTML =
+    'Enter any custom Azure service cost. This will be included in the total and cost breakdown.';
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  LIVE PRICE FETCH — calls Anthropic API, patches PRICES, recalcs
+//  LIVE PRICE FETCH — calls Azure Retail Prices API, patches PRICES
 // ═══════════════════════════════════════════════════════════════════
 async function fetchLivePrices() {
   const btn      = el('btn-refresh');
@@ -611,95 +822,165 @@ async function fetchLivePrices() {
   btn.disabled = true;
   btn.classList.add('spinning');
   dot.className = 'dot loading';
-  statusEl.textContent = 'Querying Azure pricing via AI — this takes ~10 seconds…';
+  statusEl.textContent = 'Querying Azure Retail Prices API…';
 
   document.querySelectorAll('.component-card').forEach(c => c.classList.add('card-updating'));
 
-  const prompt = `You are an Azure pricing expert. Return ONLY a valid JSON object (no markdown, no backticks, no extra text) with the latest Microsoft Azure Pay-as-You-Go prices for the West Europe (Amsterdam) region in EUR. Use exactly these keys and numeric values:
+  const BASE   = 'https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode=EUR';
+  const REGION = 'westeurope';
 
-{
-  "firewall_basic_monthly": number,
-  "firewall_standard_monthly": number,
-  "firewall_premium_monthly": number,
-  "firewall_per_gb_processed": number,
-  "vpn_basic_monthly": number,
-  "vpn_gw1_monthly": number,
-  "vpn_gw2_monthly": number,
-  "vpn_gw3_monthly": number,
-  "vpn_tunnel_hourly": number,
-  "er_std50_circuit_monthly": number,
-  "er_std100_circuit_monthly": number,
-  "er_prem1g_circuit_monthly": number,
-  "er_gw1az_monthly": number,
-  "peering_per_gb_per_direction": number,
-  "bastion_basic_hourly": number,
-  "bastion_standard_hourly": number,
-  "ddos_network_flat_monthly": number,
-  "ddos_per_ip_monthly": number,
-  "logs_per_gb_ingested": number,
-  "logs_retention_per_gb_month": number,
-  "pip_standard_static_hourly": number,
-  "dns_per_zone_monthly": number,
-  "confidence": "high" | "medium" | "low",
-  "notes": "string — brief data-freshness caveat"
-}
+  async function fetchService(serviceName) {
+    const filter = `armRegionName eq '${REGION}' and serviceName eq '${serviceName}' and priceType eq 'Consumption'`;
+    const res = await fetch(`${BASE}&$filter=${encodeURIComponent(filter)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for "${serviceName}"`);
+    const data = await res.json();
+    return data.Items || [];
+  }
 
-All monetary values are plain numbers in EUR. If uncertain on any value use your best estimate and set confidence to medium or low accordingly.`;
+  // Returns retailPrice of first item whose skuName+meterName contains ALL keywords (case-insensitive)
+  function findItem(items, ...keywords) {
+    const kw = keywords.map(k => k.toLowerCase());
+    const item = items.find(i => {
+      const txt = `${i.skuName||''} ${i.meterName||''}`.toLowerCase();
+      return kw.every(k => txt.includes(k));
+    });
+    return item ? item.retailPrice : null;
+  }
+
+  const h = PRICES._hoursPerMonth;
+  // Convert hourly API price to monthly; if null, return null
+  const toMo = p => (p !== null ? p * h : null);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
+    statusEl.textContent = 'Fetching live prices for 13 Azure services…';
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    const [fwItems, vpnItems, erItems, vnetItems, bastionItems, ddosItems,
+           logsItems, pipItems, dnsItems, resolverItems, appGwItems, apimItems, acrItems]
+      = await Promise.all([
+        fetchService('Azure Firewall'),
+        fetchService('VPN Gateway'),
+        fetchService('ExpressRoute'),
+        fetchService('Virtual Network'),
+        fetchService('Azure Bastion'),
+        fetchService('Azure DDoS Protection'),
+        fetchService('Log Analytics'),
+        fetchService('IP Addresses'),
+        fetchService('Azure DNS'),
+        fetchService('Azure DNS Private Resolver'),
+        fetchService('Application Gateway'),
+        fetchService('API Management'),
+        fetchService('Container Registry'),
+      ]);
 
-    const raw   = data.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim();
-    const clean = raw.replace(/```json|```/gi, '').trim();
-    const p     = JSON.parse(clean);
-
-    // Snapshot old values to detect what changed
     const snapshot = JSON.parse(JSON.stringify(PRICES));
 
-    // Patch PRICES — use nullish coalescing so missing keys keep current values
-    PRICES.firewall.basic              = p.firewall_basic_monthly          ?? PRICES.firewall.basic;
-    PRICES.firewall.standard           = p.firewall_standard_monthly       ?? PRICES.firewall.standard;
-    PRICES.firewall.premium            = p.firewall_premium_monthly        ?? PRICES.firewall.premium;
-    PRICES.firewall.perGbProcessed     = p.firewall_per_gb_processed       ?? PRICES.firewall.perGbProcessed;
-    PRICES.vpn.basic                   = p.vpn_basic_monthly               ?? PRICES.vpn.basic;
-    PRICES.vpn.vpngw1                  = p.vpn_gw1_monthly                 ?? PRICES.vpn.vpngw1;
-    PRICES.vpn.vpngw2                  = p.vpn_gw2_monthly                 ?? PRICES.vpn.vpngw2;
-    PRICES.vpn.vpngw3                  = p.vpn_gw3_monthly                 ?? PRICES.vpn.vpngw3;
-    PRICES.vpn.tunnelHourly            = p.vpn_tunnel_hourly               ?? PRICES.vpn.tunnelHourly;
-    PRICES.expressroute.std50Circuit   = p.er_std50_circuit_monthly        ?? PRICES.expressroute.std50Circuit;
-    PRICES.expressroute.std100Circuit  = p.er_std100_circuit_monthly       ?? PRICES.expressroute.std100Circuit;
-    PRICES.expressroute.prem1gCircuit  = p.er_prem1g_circuit_monthly       ?? PRICES.expressroute.prem1gCircuit;
-    PRICES.expressroute.erGw1AZ        = p.er_gw1az_monthly                ?? PRICES.expressroute.erGw1AZ;
-    PRICES.peering.perGbPerDirection   = p.peering_per_gb_per_direction    ?? PRICES.peering.perGbPerDirection;
-    PRICES.bastion.basicHourly         = p.bastion_basic_hourly            ?? PRICES.bastion.basicHourly;
-    PRICES.bastion.standardHourly      = p.bastion_standard_hourly         ?? PRICES.bastion.standardHourly;
-    PRICES.ddos.networkFlat            = p.ddos_network_flat_monthly       ?? PRICES.ddos.networkFlat;
-    PRICES.ddos.perIpPerMonth          = p.ddos_per_ip_monthly             ?? PRICES.ddos.perIpPerMonth;
-    PRICES.logs.perGbIngested          = p.logs_per_gb_ingested            ?? PRICES.logs.perGbIngested;
-    PRICES.logs.retentionPerGb         = p.logs_retention_per_gb_month     ?? PRICES.logs.retentionPerGb;
-    PRICES.pip.standardStaticHourly    = p.pip_standard_static_hourly      ?? PRICES.pip.standardStaticHourly;
-    PRICES.dns.perZonePerMonth         = p.dns_per_zone_monthly            ?? PRICES.dns.perZonePerMonth;
-    PRICES._source    = 'live-ai';
+    // ── Azure Firewall ──────────────────────────────────────────────
+    const p_fw_basic  = toMo(findItem(fwItems, 'basic', 'deployment'));
+    const p_fw_std    = toMo(findItem(fwItems, 'standard', 'deployment'));
+    const p_fw_prem   = toMo(findItem(fwItems, 'premium', 'deployment'));
+    const p_fw_data   = findItem(fwItems, 'data processed');
+    if (p_fw_basic !== null) PRICES.firewall.basic             = p_fw_basic;
+    if (p_fw_std   !== null) PRICES.firewall.standard          = p_fw_std;
+    if (p_fw_prem  !== null) PRICES.firewall.premium           = p_fw_prem;
+    if (p_fw_data  !== null) PRICES.firewall.perGbProcessed    = p_fw_data;
+
+    // ── VPN Gateway ─────────────────────────────────────────────────
+    const p_vpn_basic   = toMo(findItem(vpnItems, 'basic'));
+    const p_vpn_gw1     = toMo(findItem(vpnItems, 'vpngw1') || findItem(vpnItems, 'gw1'));
+    const p_vpn_gw2     = toMo(findItem(vpnItems, 'vpngw2') || findItem(vpnItems, 'gw2'));
+    const p_vpn_gw3     = toMo(findItem(vpnItems, 'vpngw3') || findItem(vpnItems, 'gw3'));
+    const p_vpn_tunnel  = findItem(vpnItems, 's2s') || findItem(vpnItems, 'tunnel');
+    if (p_vpn_basic  !== null) PRICES.vpn.basic        = p_vpn_basic;
+    if (p_vpn_gw1    !== null) PRICES.vpn.vpngw1       = p_vpn_gw1;
+    if (p_vpn_gw2    !== null) PRICES.vpn.vpngw2       = p_vpn_gw2;
+    if (p_vpn_gw3    !== null) PRICES.vpn.vpngw3       = p_vpn_gw3;
+    if (p_vpn_tunnel !== null) PRICES.vpn.tunnelHourly = p_vpn_tunnel;
+
+    // ── ExpressRoute ────────────────────────────────────────────────
+    const p_er_50  = findItem(erItems, 'metered', '50')  || findItem(erItems, 'standard', '50');
+    const p_er_100 = findItem(erItems, 'metered', '100') || findItem(erItems, 'standard', '100');
+    const p_er_1g  = findItem(erItems, 'premium', '1 gbps') || findItem(erItems, 'unlimited', '1 gbps');
+    const p_er_gw  = toMo(findItem(erItems, 'ergw1az') || findItem(erItems, 'gateway', '1'));
+    if (p_er_50  !== null) PRICES.expressroute.std50Circuit  = p_er_50;
+    if (p_er_100 !== null) PRICES.expressroute.std100Circuit = p_er_100;
+    if (p_er_1g  !== null) PRICES.expressroute.prem1gCircuit = p_er_1g;
+    if (p_er_gw  !== null) PRICES.expressroute.erGw1AZ       = p_er_gw;
+
+    // ── VNet Peering ────────────────────────────────────────────────
+    const p_peer = findItem(vnetItems, 'peering', 'intra') || findItem(vnetItems, 'peering data transfer');
+    if (p_peer !== null) PRICES.peering.perGbPerDirection = p_peer;
+
+    // ── Azure Bastion ───────────────────────────────────────────────
+    const p_bas_basic = findItem(bastionItems, 'basic');
+    const p_bas_std   = findItem(bastionItems, 'standard');
+    if (p_bas_basic !== null) PRICES.bastion.basicHourly    = p_bas_basic;
+    if (p_bas_std   !== null) PRICES.bastion.standardHourly = p_bas_std;
+
+    // ── DDoS Protection ─────────────────────────────────────────────
+    const p_ddos_net = findItem(ddosItems, 'network protection') || findItem(ddosItems, 'protection plan');
+    const p_ddos_ip  = findItem(ddosItems, 'ip protection')      || findItem(ddosItems, 'per ip');
+    if (p_ddos_net !== null) PRICES.ddos.networkFlat   = p_ddos_net;
+    if (p_ddos_ip  !== null) PRICES.ddos.perIpPerMonth = p_ddos_ip;
+
+    // ── Log Analytics ───────────────────────────────────────────────
+    const p_logs_ingest = findItem(logsItems, 'pay-as-you-go') || findItem(logsItems, 'payg');
+    const p_logs_ret    = findItem(logsItems, 'retention');
+    if (p_logs_ingest !== null) PRICES.logs.perGbIngested  = p_logs_ingest;
+    if (p_logs_ret    !== null) PRICES.logs.retentionPerGb = p_logs_ret;
+
+    // ── Public IPs ──────────────────────────────────────────────────
+    const p_pip = findItem(pipItems, 'standard', 'static') || findItem(pipItems, 'standard ip');
+    if (p_pip !== null) PRICES.pip.standardStaticHourly = p_pip;
+
+    // ── Private DNS Zones ───────────────────────────────────────────
+    const p_dns_zone = findItem(dnsItems, 'private', 'zone') || findItem(dnsItems, 'hosted zone');
+    if (p_dns_zone !== null) PRICES.dns.perZonePerMonth = p_dns_zone;
+
+    // ── Private DNS Resolver (new) ──────────────────────────────────
+    const p_res_in  = findItem(resolverItems, 'inbound');
+    const p_res_out = findItem(resolverItems, 'outbound');
+    if (p_res_in  !== null) PRICES.privateDnsResolver.inboundEndpointHourly  = p_res_in;
+    if (p_res_out !== null) PRICES.privateDnsResolver.outboundEndpointHourly = p_res_out;
+
+    // ── Application Gateway (new) ───────────────────────────────────
+    const p_agw_std_hr = findItem(appGwItems, 'standard v2', 'gateway hour') || findItem(appGwItems, 'standard v2');
+    const p_agw_waf_hr = findItem(appGwItems, 'waf v2', 'gateway hour')      || findItem(appGwItems, 'waf v2');
+    const p_agw_std_cu = findItem(appGwItems, 'standard v2', 'capacity unit');
+    const p_agw_waf_cu = findItem(appGwItems, 'waf v2', 'capacity unit');
+    if (p_agw_std_hr !== null) PRICES.appGateway.standardV2Hourly             = p_agw_std_hr;
+    if (p_agw_waf_hr !== null) PRICES.appGateway.wafV2Hourly                  = p_agw_waf_hr;
+    if (p_agw_std_cu !== null) PRICES.appGateway.standardV2CapacityUnitHourly = p_agw_std_cu;
+    if (p_agw_waf_cu !== null) PRICES.appGateway.wafV2CapacityUnitHourly      = p_agw_waf_cu;
+
+    // ── API Management ──────────────────────────────────────────────
+    const p_apim_dev  = findItem(apimItems, 'developer');
+    const p_apim_bas  = findItem(apimItems, 'basic');
+    const p_apim_std  = findItem(apimItems, 'standard');
+    const p_apim_prem = findItem(apimItems, 'premium');
+    if (p_apim_dev  !== null) PRICES.apim.developerHourly = p_apim_dev;
+    if (p_apim_bas  !== null) PRICES.apim.basicHourly     = p_apim_bas;
+    if (p_apim_std  !== null) PRICES.apim.standardHourly  = p_apim_std;
+    if (p_apim_prem !== null) PRICES.apim.premiumHourly   = p_apim_prem;
+
+    // ── Container Registry ──────────────────────────────────────────
+    const p_acr_basic = findItem(acrItems, 'basic')    || findItem(acrItems, 'basic registry');
+    const p_acr_std   = findItem(acrItems, 'standard') || findItem(acrItems, 'standard registry');
+    const p_acr_prem  = findItem(acrItems, 'premium')  || findItem(acrItems, 'premium registry');
+    const p_acr_stor  = findItem(acrItems, 'storage');
+    if (p_acr_basic !== null) PRICES.acr.basicDaily          = p_acr_basic;
+    if (p_acr_std   !== null) PRICES.acr.standardDaily       = p_acr_std;
+    if (p_acr_prem  !== null) PRICES.acr.premiumDaily        = p_acr_prem;
+    if (p_acr_stor  !== null) PRICES.acr.storagePerGbMonth   = p_acr_stor;
+
+    PRICES._source    = 'azure-retail-api';
     PRICES._fetchedAt = new Date();
 
     flashChanged(snapshot);
 
-    const conf = p.confidence || 'medium';
-    dot.className   = 'dot live';
-    sourceEl.textContent = `Prices: AI-refreshed · confidence: ${conf}`;
+    dot.className        = 'dot live';
+    sourceEl.textContent = 'Prices: Azure Retail Prices API (live)';
     el('last-updated').textContent = `Updated: ${PRICES._fetchedAt.toLocaleTimeString()}`;
-    statusEl.textContent = p.notes ? `ℹ️  ${p.notes}` : '✅ Prices refreshed successfully.';
+    statusEl.textContent = '✅ Live prices fetched successfully from Azure Retail Prices API.';
 
   } catch (err) {
     dot.className = 'dot stale';
@@ -716,15 +997,19 @@ All monetary values are plain numbers in EUR. If uncertain on any value use your
 // Flash cards whose key price changed after refresh
 function flashChanged(snapshot) {
   const checks = {
-    firewall: snapshot.firewall.standard    !== PRICES.firewall.standard,
-    vpn:      snapshot.vpn.vpngw1           !== PRICES.vpn.vpngw1,
-    er:       snapshot.expressroute.std100Circuit !== PRICES.expressroute.std100Circuit,
-    peering:  snapshot.peering.perGbPerDirection  !== PRICES.peering.perGbPerDirection,
-    bastion:  snapshot.bastion.standardHourly     !== PRICES.bastion.standardHourly,
-    ddos:     snapshot.ddos.networkFlat           !== PRICES.ddos.networkFlat,
-    logs:     snapshot.logs.perGbIngested         !== PRICES.logs.perGbIngested,
-    pip:      snapshot.pip.standardStaticHourly   !== PRICES.pip.standardStaticHourly,
-    dns:      snapshot.dns.perZonePerMonth        !== PRICES.dns.perZonePerMonth,
+    firewall:    snapshot.firewall.standard    !== PRICES.firewall.standard,
+    vpn:         snapshot.vpn.vpngw1           !== PRICES.vpn.vpngw1,
+    er:          snapshot.expressroute.std100Circuit !== PRICES.expressroute.std100Circuit,
+    peering:     snapshot.peering.perGbPerDirection  !== PRICES.peering.perGbPerDirection,
+    bastion:     snapshot.bastion.standardHourly     !== PRICES.bastion.standardHourly,
+    ddos:        snapshot.ddos.networkFlat           !== PRICES.ddos.networkFlat,
+    logs:        snapshot.logs.perGbIngested         !== PRICES.logs.perGbIngested,
+    pip:         snapshot.pip.standardStaticHourly   !== PRICES.pip.standardStaticHourly,
+    dns:         snapshot.dns.perZonePerMonth        !== PRICES.dns.perZonePerMonth,
+    dnsresolver: snapshot.privateDnsResolver.inboundEndpointHourly  !== PRICES.privateDnsResolver.inboundEndpointHourly,
+    appgw:       snapshot.appGateway.standardV2Hourly !== PRICES.appGateway.standardV2Hourly,
+    apim:        snapshot.apim.basicHourly            !== PRICES.apim.basicHourly,
+    acr:         snapshot.acr.standardDaily           !== PRICES.acr.standardDaily,
   };
   Object.entries(checks).forEach(([id, changed]) => {
     if (!changed) return;
