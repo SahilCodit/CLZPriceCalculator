@@ -495,7 +495,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
           <div class="param-row">
             <span class="param-label">Monthly Cost (€)</span>
             <div class="param-control">
-              <input type="number" id="custom-price" min="0" step="1" value="0" oninput="recalc()" style="width:130px;">
+              <input type="number" id="custom-price" min="0" max="9999999" step="1" value="0" oninput="recalc()" style="width:130px;">
               <span class="param-value" style="min-width:auto;">€/month</span>
             </div>
           </div>
@@ -680,11 +680,14 @@ function calcCosts() {
 
   const apimTier  = val('apim-tier');
   const apimUnits = int('apim-units');
+  const validApimTiers = ['developer', 'basic', 'standard', 'premium'];
+  const safeApimTier = validApimTiers.includes(apimTier) ? apimTier : 'basic';
   c.apim = on('apim')
-    ? PRICES.apim[apimTier + 'Hourly'] * (apimTier === 'premium' ? apimUnits : 1) * h
+    ? (PRICES.apim[safeApimTier + 'Hourly'] || 0) * (safeApimTier === 'premium' ? apimUnits : 1) * h
     : 0;
 
-  c.custom = on('custom') ? (parseFloat(el('custom-price').value) || 0) : 0;
+  const rawCustom = parseFloat(el('custom-price').value) || 0;
+  c.custom = on('custom') ? Math.max(0, Math.min(rawCustom, 9999999)) : 0;
 
   return c;
 }
@@ -859,7 +862,7 @@ async function fetchLivePrices() {
     if (p_er_gw  !== null) PRICES.expressroute.erGw1AZ       = p_er_gw;
 
     // ── VNet Peering ────────────────────────────────────────────────
-    const p_peer = findItem(vnetItems, 'peering', 'intra') || findItem(vnetItems, 'intra-region replication');
+    const p_peer = findItem(vnetItems, 'peering', 'intra') || findItem(vnetItems, 'peering data transfer');
     if (p_peer !== null) PRICES.peering.perGbPerDirection = p_peer;
 
     // ── Azure Bastion ───────────────────────────────────────────────
